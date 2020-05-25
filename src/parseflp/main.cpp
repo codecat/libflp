@@ -25,6 +25,18 @@ static void ReportInfo(FlpFile& flp)
 	printf("  genre: %s\n", md.m_genre.c_str());
 
 	printf("  bpm: %g\n", flp.GetBPM());
+
+	for (FlpFile::Channel* chan : flp.GetChannels()) {
+		printf("  channel %hu:\n", chan->m_id);
+		printf("    name: %s\n", chan->m_name.c_str());
+		printf("    type: %d\n", (int)chan->m_type);
+		printf("    plugin name: %s\n", chan->m_pluginName.c_str());
+	}
+
+	for (FlpFile::Track* track : flp.GetTracks()) {
+		printf("  track %u:\n", track->m_info.m_id);
+		printf("    name: %s\n", track->m_name.c_str());
+	}
 }
 
 static s2::string EncodeLicensee(s2::string name)

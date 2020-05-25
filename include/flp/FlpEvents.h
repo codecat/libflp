@@ -86,12 +86,12 @@ enum FLP_Event : uint8_t
 
 	FLP_BPM = FLP_Int + 28,
 
-	FLP_Unknown_159 = FLP_Int + 31, // always 1714 (0x6B2)
+	FLP_Unknown_159 = FLP_Int + 31, // 0x6B2 on 20.7, 0x5E9 on 20.6
 
 	// TEXT EVENTS
 	FLP_Undef = 192,            	//+Size (var length)
 	FLP_Text = FLP_Undef,         	//+Size (var length)+Text (Null Term. String)
-	FLP_Text_ChanName = FLP_Text,	// name for the current channel
+	FLP_Text_ChanName_Deprecated = FLP_Text,	// name for the current channel
 	FLP_Text_PatName = FLP_Text + 1,	// name for the current pattern
 	FLP_Text_Title = FLP_Text + 2,	// title of the loop
 	FLP_Text_Comment = FLP_Text + 3,	// old comments in text format. Not used anymore
@@ -102,7 +102,7 @@ enum FLP_Event : uint8_t
 	FLP_Text_Licensee = FLP_Text + 8,
 	FLP_Text_PluginName = FLP_Text + 9,	// plugin file name (without path)
 
-	FLP_Text_ChannelName = FLP_Text + 11,
+	FLP_Text_ChannelName = FLP_Text + 11, // seems to be the new version of FLP_Text_ChanName_Deprecated
 
 	FLP_Text_Genre = FLP_Text + 14,
 	FLP_Text_Author = FLP_Text + 15,
@@ -116,6 +116,9 @@ enum FLP_Event : uint8_t
 	FLP_ChanParams = FLP_Text + 23, 	// block of various channel params (can grow)
 
 	FLP_Text_ChannelCategoryName = FLP_Text + 39, // "Unsorted"
+
+	FLP_NewTrack = FLP_Text + 46,
+	FLP_Text_TrackName = FLP_Text + 47,
 
 	FLP_Text_ArrangementName = FLP_Text + 49,
 };

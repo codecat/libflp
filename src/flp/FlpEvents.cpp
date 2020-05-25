@@ -75,7 +75,7 @@ const char* FLP_GetEventName(FLP_Event ev)
 	case FLP_BPM: return "FLP_BPM";
 	case FLP_Unknown_159: return "FLP_Unknown_159";
 
-	case FLP_Text_ChanName: return "FLP_Text_ChanName";
+	case FLP_Text_ChanName_Deprecated: return "FLP_Text_ChanName_Deprecated";
 	case FLP_Text_PatName: return "FLP_Text_PatName";
 	case FLP_Text_Title: return "FLP_Text_Title";
 	case FLP_Text_Comment: return "FLP_Text_Comment";
@@ -96,6 +96,8 @@ const char* FLP_GetEventName(FLP_Event ev)
 	case FLP_PluginParams: return "FLP_PluginParams";
 	case FLP_ChanParams: return "FLP_ChanParams";
 	case FLP_Text_ChannelCategoryName: return "FLP_Text_ChannelCategoryName";
+	case FLP_NewTrack: return "FLP_NewTrack";
+	case FLP_Text_TrackName: return "FLP_Text_TrackName";
 	case FLP_Text_ArrangementName: return "FLP_Text_ArrangementName";
 	}
 

@@ -80,11 +80,21 @@ FlpFile::FlpFile(const s2::string& filename)
 
 FlpFile::~FlpFile()
 {
+	for (auto chan : m_channels) {
+		delete chan;
+	}
+	m_channels.clear();
+
+	for (auto track : m_tracks) {
+		delete track;
+	}
+	m_tracks.clear();
 }
 
 void FlpFile::ReadByte(FLP_Event ev, s2::file& file)
 {
 	size_t startPos = file.pos();
+	bool handled = true;
 
 	uint8_t value = file.read<uint8_t>();
 
@@ -101,6 +111,11 @@ void FlpFile::ReadByte(FLP_Event ev, s2::file& file)
 	} else if (ev == FLP_BlockLength) {
 		m_blockLength = value;
 
+	} else if (ev == FLP_ChanType) {
+		if (EnsureMode(Mode::Channel)) {
+			m_currentChannel->m_type = (Channel::Type)value;
+		}
+
 	} else {
 		printf("0x%08" PRIXPTR ": Unhandled byte event %s (%d, %02X)\n", startPos, FLP_GetEventName(ev), (int)ev, value);
 	}
@@ -109,6 +124,7 @@ void FlpFile::ReadByte(FLP_Event ev, s2::file& file)
 void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
 {
 	size_t startPos = file.pos();
+	bool handled = true;
 
 	uint16_t value = file.read<uint16_t>();
 
@@ -118,28 +134,72 @@ void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
 	} else if (ev == FLP_CurrentPatNum) {
 		m_userState.m_pattern = value;
 
+	} else if (ev == FLP_NewChan) {
+		auto newChannel = new Channel;
+		newChannel->m_id = value;
+		m_channels.add(newChannel);
+
+		m_currentChannel = newChannel;
+
 	} else {
-		printf("0x%08" PRIXPTR ": Unhandled word event %s (%d, %04X)\n", startPos, FLP_GetEventName(ev), (int)ev, value);
+		handled = false;
 	}
+
+#if defined(DEBUG)
+	if (!handled) {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+	} else {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	}
+	printf("0x%08" PRIXPTR ": ", startPos);
+	if (handled) {
+		printf("Handled");
+	} else {
+		printf("Unhandled");
+	}
+	printf(" word event %s (%d, %04X)\n", FLP_GetEventName(ev), (int)ev, value);
+#endif
 }
 
 void FlpFile::ReadDword(FLP_Event ev, s2::file& file)
 {
 	size_t startPos = file.pos();
+	bool handled = true;
 
 	uint32_t value = file.read<uint32_t>();
 
 	if (ev == FLP_BPM) {
 		m_bpm = value / 1000.0;
 
+	} else if (ev == FLP_Color) {
+		if (m_currentChannel != nullptr) {
+			m_currentChannel->m_color = value;
+		}
+
 	} else {
-		printf("0x%08" PRIXPTR ": Unhandled dword event %s (%d, %08X)\n", startPos, FLP_GetEventName(ev), (int)ev, value);
+		handled = false;
 	}
+
+#if defined(DEBUG)
+	if (!handled) {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+	} else {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	}
+	printf("0x%08" PRIXPTR ": ", startPos);
+	if (handled) {
+		printf("Handled");
+	} else {
+		printf("Unhandled");
+	}
+	printf(" dword event %s (%d, %08X)\n", FLP_GetEventName(ev), (int)ev, value);
+#endif
 }
 
 void FlpFile::ReadText(FLP_Event ev, s2::file& file)
 {
 	size_t startPos = file.pos();
+	bool handled = true;
 
 	/* Start with a DWORD Size = 0. You're going to reconstruct the size by getting packs of 7 bits:
 	 *   1. Get a byte.
@@ -204,26 +264,66 @@ void FlpFile::ReadText(FLP_Event ev, s2::file& file)
 	} else if (ev == FLP_Text_Author) {
 		m_metadata.m_author = DataAsString(buffer);
 
-	} else {
-		printf("0x%08" PRIXPTR ": Unhandled text event %s (%d, size 0x%x)", startPos, FLP_GetEventName(ev), (int)ev, len);
+	} else if (ev == FLP_Text_ChannelCategoryName) {
+		m_channelCategories.add(DataAsString(buffer));
 
-		wchar_t* str = (wchar_t*)buffer;
-
-		bool printable = true;
-		for (uint32_t i = 0; i < len / sizeof(wchar_t) - 1; i++) {
-			wchar_t c = str[i];
-			if (c < 0x20 || c > 0x7E) {
-				printable = false;
-				break;
-			}
+	} else if (ev == FLP_Text_ChannelName) {
+		if (EnsureMode(Mode::Channel)) {
+			m_currentChannel->m_name = DataAsString(buffer);
 		}
 
-		if (printable) {
-			printf(" \"%S\"\n", str);
-		} else {
-			printf("\n");
+	} else if (ev == FLP_Text_PluginName) {
+		if (EnsureMode(Mode::Channel)) {
+			m_currentChannel->m_pluginName = DataAsString(buffer);
+		}
+
+	} else if (ev == FLP_NewTrack) {
+		auto newTrack = new Track;
+		newTrack->m_info = *(FlpStructs::TrackInfo*)buffer;
+		m_tracks.add(newTrack);
+
+		m_currentTrack = newTrack;
+
+	} else if (ev == FLP_Text_TrackName) {
+		if (EnsureMode(Mode::Track)) {
+			m_currentTrack->m_name = DataAsString(buffer);
+		}
+
+	} else {
+		handled = false;
+	}
+
+#if defined(DEBUG)
+	if (!handled) {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+	} else {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	}
+	printf("0x%08" PRIXPTR ": ", startPos);
+	if (handled) {
+		printf("Handled");
+	} else {
+		printf("Unhandled");
+	}
+	printf(" text event %s (%d, size 0x%x)", FLP_GetEventName(ev), (int)ev, len);
+
+	wchar_t* str = (wchar_t*)buffer;
+
+	bool printable = true;
+	for (uint32_t i = 0; i < len / sizeof(wchar_t) - 1; i++) {
+		wchar_t c = str[i];
+		if (c < 0x20 || c > 0x7E) {
+			printable = false;
+			break;
 		}
 	}
+
+	if (printable) {
+		printf(" \"%S\"\n", str);
+	} else {
+		printf("\n");
+	}
+#endif
 
 	free(buffer);
 }
@@ -234,4 +334,22 @@ s2::string FlpFile::DataAsString(void* p) const
 		return StringFromWide(p);
 	}
 	return (const char*)p;
+}
+
+bool FlpFile::EnsureMode(Mode mode) const
+{
+	if (mode == Mode::Channel) {
+		assert(m_currentChannel != nullptr);
+		if (m_currentChannel != nullptr) {
+			return true;
+		}
+
+	} else if (mode == Mode::Track) {
+		assert(m_currentTrack != nullptr);
+		if (m_currentTrack != nullptr) {
+			return true;
+		}
+	}
+
+	return false;
 }
