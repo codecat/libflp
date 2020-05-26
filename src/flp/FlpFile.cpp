@@ -3,6 +3,10 @@
 
 #if defined(_MSC_VER)
 #include <Windows.h>
+#else
+#include <string>
+#include <iconv.h>
+#define UTF8_SEQUENCE_MAXLEN 6
 #endif
 
 static s2::string StringFromWide(const wchar_t* wsz)
@@ -14,10 +18,16 @@ static s2::string StringFromWide(const wchar_t* wsz)
 	char* buffer = (char*)alloca(needed_bytes + 1);
 	WideCharToMultiByte(CP_UTF8, 0, wsz, (int)length, buffer, needed_bytes, nullptr, nullptr);
 	buffer[needed_bytes] = '\0';
-	return s2::string(buffer);
 #else
-#error This needs Linux support!
+	signed char utf8[(length + 1) * UTF8_SEQUENCE_MAXLEN];
+	char *buffer = (char *) &utf8[0];
+	size_t iconv_in_bytes = (length + 1) * sizeof(wchar_t);
+	size_t iconv_out_bytes = sizeof(utf8);
+
+	iconv_t cd = iconv_open("UTF-8", "WCHAR_T");
+	iconv(cd, (char **) wsz, &iconv_in_bytes, &buffer, &iconv_out_bytes);
 #endif
+	return s2::string(buffer);
 }
 
 static s2::string StringFromWide(const void* wsz)
@@ -145,7 +155,7 @@ void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
+#if defined(DEBUG) && defined(_MSC_VER)
 	if (!handled) {
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	} else {
@@ -180,7 +190,7 @@ void FlpFile::ReadDword(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
+#if defined(DEBUG) && defined(_MSC_VER)
 	if (!handled) {
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	} else {
@@ -293,7 +303,7 @@ void FlpFile::ReadText(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
+#if defined(DEBUG) && defined(_MSC_VER)
 	if (!handled) {
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	} else {
