@@ -117,8 +117,23 @@ void FlpFile::ReadByte(FLP_Event ev, s2::file& file)
 		}
 
 	} else {
-		printf("0x%08" PRIXPTR ": Unhandled byte event %s (%d, %02X)\n", startPos, FLP_GetEventName(ev), (int)ev, value);
+		handled = false;
 	}
+
+#if defined(DEBUG)
+	if (!handled) {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+	} else {
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	}
+	printf("0x%08" PRIXPTR ": ", startPos);
+	if (handled) {
+		printf("Handled");
+	} else {
+		printf("Unhandled");
+	}
+	printf(" byte event %s (%d, %02X)\n", FLP_GetEventName(ev), (int)ev, value);
+#endif
 }
 
 void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
