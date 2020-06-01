@@ -72,7 +72,7 @@ private:
 	};
 
 public:
-	explicit FlpFile(const s2::string& filename);
+	explicit FlpFile(const s2::string& filename, bool parseDebug = false);
 	~FlpFile();
 
 	inline bool IsValid() const { return m_isValid; }
@@ -105,7 +105,9 @@ private:
 
 private:
 	bool m_isValid = false;
+
 	s2::string m_filename;
+	bool m_parseDebug = false;
 
 	Header m_header;
 	Metadata m_metadata;

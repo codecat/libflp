@@ -25,9 +25,10 @@ static s2::string StringFromWide(const void* wsz)
 	return StringFromWide((const wchar_t*)wsz);
 }
 
-FlpFile::FlpFile(const s2::string& filename)
+FlpFile::FlpFile(const s2::string& filename, bool parseDebug)
 {
 	m_filename = filename;
+	m_parseDebug = parseDebug;
 
 	s2::file file(filename);
 	file.open(s2::filemode::read);
@@ -120,20 +121,20 @@ void FlpFile::ReadByte(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
-	if (!handled) {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	} else {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	if (m_parseDebug) {
+		if (!handled) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+		} else {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+		}
+		printf("0x%08" PRIXPTR ": ", startPos);
+		if (handled) {
+			printf("Handled");
+		} else {
+			printf("Unhandled");
+		}
+		printf(" byte event %s (%d, %02X)\n", FLP_GetEventName(ev), (int)ev, value);
 	}
-	printf("0x%08" PRIXPTR ": ", startPos);
-	if (handled) {
-		printf("Handled");
-	} else {
-		printf("Unhandled");
-	}
-	printf(" byte event %s (%d, %02X)\n", FLP_GetEventName(ev), (int)ev, value);
-#endif
 }
 
 void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
@@ -160,20 +161,20 @@ void FlpFile::ReadWord(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
-	if (!handled) {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	} else {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	if (m_parseDebug) {
+		if (!handled) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+		} else {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+		}
+		printf("0x%08" PRIXPTR ": ", startPos);
+		if (handled) {
+			printf("Handled");
+		} else {
+			printf("Unhandled");
+		}
+		printf(" word event %s (%d, %04X)\n", FLP_GetEventName(ev), (int)ev, value);
 	}
-	printf("0x%08" PRIXPTR ": ", startPos);
-	if (handled) {
-		printf("Handled");
-	} else {
-		printf("Unhandled");
-	}
-	printf(" word event %s (%d, %04X)\n", FLP_GetEventName(ev), (int)ev, value);
-#endif
 }
 
 void FlpFile::ReadDword(FLP_Event ev, s2::file& file)
@@ -195,20 +196,20 @@ void FlpFile::ReadDword(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
-	if (!handled) {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	} else {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	if (m_parseDebug) {
+		if (!handled) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+		} else {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+		}
+		printf("0x%08" PRIXPTR ": ", startPos);
+		if (handled) {
+			printf("Handled");
+		} else {
+			printf("Unhandled");
+		}
+		printf(" dword event %s (%d, %08X)\n", FLP_GetEventName(ev), (int)ev, value);
 	}
-	printf("0x%08" PRIXPTR ": ", startPos);
-	if (handled) {
-		printf("Handled");
-	} else {
-		printf("Unhandled");
-	}
-	printf(" dword event %s (%d, %08X)\n", FLP_GetEventName(ev), (int)ev, value);
-#endif
 }
 
 void FlpFile::ReadText(FLP_Event ev, s2::file& file)
@@ -308,37 +309,37 @@ void FlpFile::ReadText(FLP_Event ev, s2::file& file)
 		handled = false;
 	}
 
-#if defined(DEBUG)
-	if (!handled) {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	} else {
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	}
-	printf("0x%08" PRIXPTR ": ", startPos);
-	if (handled) {
-		printf("Handled");
-	} else {
-		printf("Unhandled");
-	}
-	printf(" text event %s (%d, size 0x%x)", FLP_GetEventName(ev), (int)ev, len);
+	if (m_parseDebug) {
+		if (!handled) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+		} else {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+		}
+		printf("0x%08" PRIXPTR ": ", startPos);
+		if (handled) {
+			printf("Handled");
+		} else {
+			printf("Unhandled");
+		}
+		printf(" text event %s (%d, size 0x%x)", FLP_GetEventName(ev), (int)ev, len);
 
-	wchar_t* str = (wchar_t*)buffer;
+		wchar_t* str = (wchar_t*)buffer;
 
-	bool printable = true;
-	for (uint32_t i = 0; i < len / sizeof(wchar_t) - 1; i++) {
-		wchar_t c = str[i];
-		if (c < 0x20 || c > 0x7E) {
-			printable = false;
-			break;
+		bool printable = true;
+		for (uint32_t i = 0; i < len / sizeof(wchar_t) - 1; i++) {
+			wchar_t c = str[i];
+			if (c < 0x20 || c > 0x7E) {
+				printable = false;
+				break;
+			}
+		}
+
+		if (printable) {
+			printf(" \"%S\"\n", str);
+		} else {
+			printf("\n");
 		}
 	}
-
-	if (printable) {
-		printf(" \"%S\"\n", str);
-	} else {
-		printf("\n");
-	}
-#endif
 
 	free(buffer);
 }

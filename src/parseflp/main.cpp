@@ -81,7 +81,27 @@ static void PrintUsage()
 	printf("Usage: parseflp [options] <path>\n");
 	printf("Usage: parseflp --encode-licensee <name>\n");
 	printf("\nOptions:\n");
-	printf("  --folder, --recursive, --compact\n");
+	printf("  --folder, --recursive, --compact, --sort <path|title|bpm>\n");
+}
+
+enum class ESorting
+{
+	None,
+	Path,
+	Title,
+	BPM,
+};
+
+static ESorting ParseSorting(const char* szName)
+{
+	if (!strcmp(szName, "path")) {
+		return ESorting::Path;
+	} else if (!strcmp(szName, "title")) {
+		return ESorting::Title;
+	} else if (!strcmp(szName, "bpm")) {
+		return ESorting::BPM;
+	}
+	return ESorting::None;
 }
 
 int main(int argc, char* argv[])
@@ -91,9 +111,11 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	bool debug = false;
 	bool reportCompact = false;
 	bool readFolder = false;
 	bool readFolderRecursive = false;
+	static ESorting readFolderSorting = ESorting::None;
 	s2::string strInput;
 
 	for (int i = 1; i < argc; i++) {
@@ -104,6 +126,13 @@ int main(int argc, char* argv[])
 				s2::string name = EncodeLicensee(argv[++i]);
 				printf("%s\n", name.c_str());
 				return 0;
+			}
+
+			if (strArg == "--debug") {
+				debug = true;
+
+			} else if (strArg == "--compact") {
+				reportCompact = true;
 
 			} else if (strArg == "--folder") {
 				readFolder = true;
@@ -111,8 +140,8 @@ int main(int argc, char* argv[])
 			} else if (strArg == "--recursive") {
 				readFolderRecursive = true;
 
-			} else if (strArg == "--compact") {
-				reportCompact = true;
+			} else if (strArg == "--sort") {
+				readFolderSorting = ParseSorting(argv[++i]);
 			}
 		} else {
 			strInput = strArg;
@@ -120,15 +149,47 @@ int main(int argc, char* argv[])
 	}
 
 	if (readFolder) {
+		s2::list<FlpFile*> sortedResults;
+
 		FolderIndex folder(strInput, readFolderRecursive);
 		for (int i = 0; i < folder.GetFileCount(); i++) {
 			s2::string strPath = folder.GetFilePath(i);
 			if (strPath.endswith(".flp")) {
-				ReportInfo(FlpFile(strPath), reportCompact);
+				if (readFolderSorting == ESorting::None) {
+					ReportInfo(FlpFile(strPath, debug), reportCompact);
+					continue;
+				}
+
+				sortedResults.add(new FlpFile(strPath, debug));
 			}
 		}
+
+		sortedResults.sort([](const void* pa, const void* pb) -> int {
+			auto& a = **(const FlpFile**)pa;
+			auto& b = **(const FlpFile**)pb;
+
+			switch (readFolderSorting) {
+			case ESorting::Path: return strcmp(a.Filename(), b.Filename());
+			case ESorting::Title: return strcmp(a.GetMetadata().m_title, b.GetMetadata().m_title);
+			case ESorting::BPM:
+				if (a.GetBPM() > b.GetBPM()) {
+					return 1;
+				} else if (a.GetBPM() < b.GetBPM()) {
+					return -1;
+				}
+				return 0;
+			default:
+				assert(false);
+				return 0;
+			}
+		});
+
+		for (auto flp : sortedResults) {
+			ReportInfo(*flp, reportCompact);
+			delete flp;
+		}
 	} else {
-		ReportInfo(FlpFile(strInput), reportCompact);
+		ReportInfo(FlpFile(strInput, debug), reportCompact);
 	}
 
 	return 0;
